@@ -3,7 +3,10 @@ import os,json,argparse
 from dotenv import load_dotenv
 from openai import OpenAI
 from tools_v2 import TOOLS,execute_tool
-load_dotenv();BASE_URL=os.getenv("OPENAI_BASE_URL","http://localhost:11434/v1");API_KEY=os.getenv("OPENAI_API_KEY","ollama");MODEL=os.getenv("MODEL","study-assistant");client=OpenAI(api_key=API_KEY,base_url=BASE_URL)
+load_dotenv();
+BASE_URL=os.getenv("OPENAI_BASE_URL","http://localhost:11434/v1");
+API_KEY=os.getenv("OPENAI_API_KEY","ollama");
+MODEL=os.getenv("MODEL","study-assistant");client=OpenAI(api_key=API_KEY,base_url=BASE_URL)
 SYSTEM="""You are a college study helper. Use calculate_percentage for percentage calculations and get_study_tip for study tips. difficulty must be beginner, intermediate or advanced. Do not invent tools or arguments. Answer directly when no tool is needed."""
 def run_agent(q,max_steps=6):
     msgs=[{"role":"system","content":SYSTEM},{"role":"user","content":q}];seen={};max_tokens=300;lengths=0

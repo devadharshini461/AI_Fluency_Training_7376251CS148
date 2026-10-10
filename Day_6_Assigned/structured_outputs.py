@@ -1,15 +1,68 @@
-"""Day 6: same extraction question, three response formats."""
-import os,json
+"""Day 6: Same extraction question, three response formats."""
+import os
+import json
+from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
-load_dotenv();client=OpenAI(api_key=os.getenv("OPENAI_API_KEY","ollama"),base_url=os.getenv("OPENAI_BASE_URL","http://localhost:11434/v1"));MODEL=os.getenv("MODEL","study-assistant")
-Q="Extract the student's name, course and score from: 'Anu scored 82 in Python programming.'"
-S={"type":"object","properties":{"name":{"type":"string"},"course":{"type":"string"},"score":{"type":"number"}},"required":["name","course","score"],"additionalProperties":False}
-def ask(fmt,label):
-    print("\n---",label,"---")
+
+# Robustly load the shared .env file located one directory level above
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
+API_KEY = os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY")
+BASE_URL = os.getenv("BASE_URL") or os.getenv("OPENAI_BASE_URL")
+MODEL = os.getenv("MODEL", "openai/gpt-oss-120b")
+
+client = OpenAI(
+    api_key=API_KEY,
+    base_url=BASE_URL
+)
+
+Q = "Extract the student's name, course and score from: 'Anu scored 82 in Python programming.'"
+
+S = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "course": {"type": "string"},
+        "score": {"type": "number"}
+    },
+    "required": ["name", "course", "score"],
+    "additionalProperties": False
+}
+
+def ask(fmt, label):
+    print("\n---", label, "---")
+    sys_msg = "Extract the requested fields as JSON." if fmt else "Extract the requested fields."
+    messages = [
+        {"role": "system", "content": sys_msg},
+        {"role": "user", "content": Q}
+    ]
+    kwargs = {"model": MODEL, "messages": messages, "temperature": 0}
+    if fmt is not None:
+        kwargs["response_format"] = fmt
+
+    response = client.chat.completions.create(**kwargs)
+    raw = (response.choices[0].message.content or "").strip()
+    print("raw:", raw)
+
     try:
-        r=client.chat.completions.create(model=MODEL,messages=[{"role":"system","content":"Extract the requested fields."},{"role":"user","content":Q}],temperature=0,response_format=fmt);raw=(r.choices[0].message.content or "").strip();print("raw:",raw)
-        try:print("parsed:",json.loads(raw))
-        except Exception as e:print("parsed/error:",e)
-    except Exception as e:print("not supported here:",type(e).__name__,e)
-if __name__=="__main__":ask(None,"1. no constraint");ask({"type":"json_object"},"2. JSON mode");ask({"type":"json_schema","json_schema":{"name":"student_result","schema":S,"strict":True}},"3. schema mode")
+        parsed = json.loads(raw)
+        print("parsed:", parsed)
+    except Exception as e:
+        print("parsed/error:", e)
+
+if __name__ == "__main__":
+    ask(None, "1. no constraint")
+    ask({"type": "json_object"}, "2. JSON mode")
+    ask(
+        {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "student_result",
+                "schema": S,
+                "strict": True
+            }
+        },
+        "3. schema mode"
+    )
